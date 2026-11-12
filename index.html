@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hangman Game</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap');
+  *{box-sizing:border-box;font-family:'Baloo 2',cursive}
+  body{margin:0;min-height:100vh;background:#6C7BFF;display:flex;flex-direction:column;align-items:center;padding:20px}
+  h1{color:white;font-size:30px;margin:10px 0 0}
+  p.sub{color:#E0E4FF;margin:5px 0 15px}
+  .card{background:white;width:100%;max-width:520px;border-radius:14px;padding:20px;display:flex;gap:20px;box-shadow:0 20px 40px rgba(0,0,0,0.3)}
+  .left{flex:1;display:flex;flex-direction:column;align-items:center}
+  .right{flex:1.2}
+  svg{width:150px;height:180px}
+  .caption{font-weight:800;font-size:11px;letter-spacing:1px;margin-top:5px}
+  .word{font-size:24px;font-weight:800;letter-spacing:8px;text-align:center;margin:10px 0}
+  .word span{display:inline-block;min-width:20px;border-bottom:3px solid #6C7BFF;margin:0 2px}
+  .hint{font-size:13px;color:#555;background:#F0F1FF;padding:8px;border-radius:8px;text-align:center}
+  .wrong{font-size:13px;text-align:center;margin:10px 0;color:#D32F2F;font-weight:700}
+  .keyboard{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:10px}
+  .key{background:#6C7BFF;color:white;border:none;padding:10px 0;border-radius:6px;font-weight:800;font-size:14px;cursor:pointer}
+  .key:disabled{opacity:0.4;cursor:not-allowed}
+  .key.correct{background:#4CAF50}
+  .key.wrong-key{background:#FF5252}
+  .btn{background:#6C7BFF;color:white;border:none;padding:12px 22px;border-radius:10px;font-weight:800;cursor:pointer;margin-top:15px;font-size:16px}
+  .btn-outline{background:transparent;border:2px solid white;color:white;padding:10px 18px;border-radius:10px;font-weight:800;cursor:pointer}
+  .scorebar{display:flex;gap:10px;margin-top:15px}
+  .score{background:rgba(255,255,255,0.2);color:white;padding:8px 16px;border-radius:10px;text-align:center}
+  .score b{font-size:20px;display:block}
+  #message{font-size:20px;font-weight:800;text-align:center;margin-top:10px;color:white}
+  @media(max-width:500px){.card{flex-direction:column}.word{font-size:20px}}
+</style>
+</head>
+<body>
+  <h1>HANGMAN GAME</h1>
+  <p class="sub">Guess letters, avoid mistakes!</p>
+
+  <div class="card">
+    <div class="left">
+      <!-- Hangman Drawing -->
+      <svg viewBox="0 0 150 180">
+        <line x1="10" y1="170" x2="80" y2="170" stroke="#333" stroke-width="4"/>
+        <line id="p1" x1="30" y1="170" x2="30" y2="10" stroke="#333" stroke-width="4" style="display:none"/>
+        <line id="p2" x1="30" y1="10" x2="110" y2="10" stroke="#333" stroke-width="4" style="display:none"/>
+        <line id="p3" x1="110" y1="10" x2="110" y2="40" stroke="#333" stroke-width="4" style="display:none"/>
+        <circle id="p4" cx="110" cy="55" r="15" fill="none" stroke="#333" stroke-width="3" style="display:none"/>
+        <line id="p5" x1="110" y1="70" x2="110" y2="115" stroke="#333" stroke-width="3" style="display:none"/>
+        <line id="p6" x1="110" y1="85" x2="90" y2="100" stroke="#333" stroke-width="3" style="display:none"/>
+        <line id="p7" x1="110" y1="85" x2="130" y2="100" stroke="#333" stroke-width="3" style="display:none"/>
+        <line id="p8" x1="110" y1="115" x2="95" y2="140" stroke="#333" stroke-width="3" style="display:none"/>
+        <line id="p9" x1="110" y1="115" x2="125" y2="140" stroke="#333" stroke-width="3" style="display:none"/>
+        <!-- Eyes when dead -->
+        <text id="deadFace" x="102" y="58" font-size="14" style="display:none">✖️</text>
+      </svg>
+      <div class="caption">HANGMAN GAME</div>
+    </div>
+
+    <div class="right">
+      <div class="word" id="wordDisplay"></div>
+      <div class="hint" id="hint">Hint: ...</div>
+      <div class="wrong" id="wrongText">Incorrect guesses: 0 / 6</div>
+      <div class="keyboard" id="keyboard"></div>
+    </div>
+  </div>
+
+  <div id="message"></div>
+  <button class="btn" onclick="newGame()">↻ New Word</button>
+
+  <div class="scorebar">
+    <div class="score"><small>WINS</small><b id="wins">0</b></div>
+    <div class="score"><small>LOSSES</small><b id="losses">0</b></div>
+    <div class="score"><small>STREAK</small><b id="streak">0</b></div>
+  </div>
+  <br><button class="btn-outline" onclick="location.reload()">↩ Back</button>
+
+<script>
+const words = [
+  {word:'TELEPHONE', hint:'A device used to transmit sound over long distances.'},
+  {word:'PIZZA', hint:'Italian food with cheese and toppings.'},
+  {word:'GUITAR', hint:'Musical instrument with 6 strings.'},
+  {word:'SUNSHINE', hint:'Bright light from the sun.'},
+  {word:'BIRTHDAY', hint:"Buhle's special day! 🎂"},
+  {word:'FRIEND', hint:'Someone you love and trust, like your bestie.'},
+  {word:'JOHANNESBURG', hint:'Biggest city in South Africa.'},
+  {word:'FOOTBALL', hint:'Sport played with a ball and goals.'},
+  {word:'CHOCOLATE', hint:'Sweet brown treat everyone loves.'},
+  {word:'RAINBOW', hint:'Colourful arc after rain.'},
+  {word:'COMPUTER', hint:'You use it to code and play games.'},
+  {word:'DANCING', hint:'Moving to music.'},
+  {word:'BEACH', hint:'Sandy place by the sea.'},
+  {word:'ELEPHANT', hint:'Big animal with a trunk.'},
+  {word:'MUSIC', hint:'What you listen to every day.'},
+];
+
+let currentWord='', currentHint='', guessed=[], wrong=0, wins=0, losses=0, streak=0;
+let gameOver=false;
+
+function newGame(){
+  const pick = words[Math.floor(Math.random()*words.length)];
+  currentWord = pick.word; currentHint = pick.hint;
+  guessed=[]; wrong=0; gameOver=false;
+  document.getElementById('message').textContent='';
+  document.getElementById('hint').textContent='Hint: '+currentHint;
+  buildKeyboard(); updateDisplay();
+}
+function buildKeyboard(){
+  const kb=document.getElementById('keyboard'); kb.innerHTML='';
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(letter=>{
+    const btn=document.createElement('button');
+    btn.className='key'; btn.textContent=letter;
+    btn.onclick=()=>guess(letter,btn);
+    kb.appendChild(btn);
+  });
+}
+function guess(letter,btn){
+  if(gameOver || guessed.includes(letter)) return;
+  guessed.push(letter); btn.disabled=true;
+  if(currentWord.includes(letter)){ btn.classList.add('correct'); }
+  else { btn.classList.add('wrong-key'); wrong++; showHangman(); }
+  updateDisplay();
+  checkEnd();
+}
+function showHangman(){
+  // We use 6 wrongs total, but drawing has 9 parts - show progressively
+  // Map wrong 1-6 to parts: 1:pole, 2:top, 3:rope, 4:head, 5:body+arms, 6:legs+face
+  const map = {1:['p1'],2:['p2'],3:['p3'],4:['p4'],5:['p5','p6','p7'],6:['p8','p9']};
+  if(map[wrong]) map[wrong].forEach(id=> document.getElementById(id).style.display='block');
+  if(wrong>=6) document.getElementById('deadFace').style.display='block';
+  // Hide dead face on new game
+  if(wrong<6) document.getElementById('deadFace').style.display='none';
+}
+function updateDisplay(){
+  // reset drawing
+  for(let i=1;i<=9;i++){ const el=document.getElementById('p'+i); if(el) el.style.display='none'; }
+  // re-show based on wrong
+  let tempWrong=wrong;
+  for(let w=1;w<=tempWrong;w++){ const map={1:['p1'],2:['p2'],3:['p3'],4:['p4'],5:['p5','p6','p7'],6:['p8','p9']}; if(map[w]) map[w].forEach(id=> document.getElementById(id).style.display='block'); }
+  if(wrong>=6) document.getElementById('deadFace').style.display='block'; else document.getElementById('deadFace').style.display='none';
+
+  const display=document.getElementById('wordDisplay');
+  display.innerHTML = currentWord.split('').map(l=> `<span>${guessed.includes(l)?l:'&nbsp;'}</span>`).join('');
+  document.getElementById('wrongText').textContent = `Incorrect guesses: ${wrong} / 6`;
+}
+function checkEnd(){
+  if(currentWord.split('').every(l=>guessed.includes(l))){
+    gameOver=true;
+    document.getElementById('message').textContent='🎉 YOU WIN! The word was '+currentWord;
+    wins++; streak++; updateScores();
+  } else if(wrong>=6){
+    gameOver=true;
+    document.getElementById('message').textContent='💀 GAME OVER! Word was '+currentWord;
+    // reveal word
+    document.getElementById('wordDisplay').innerHTML = currentWord.split('').map(l=> `<span>${l}</span>`).join('');
+    losses++; streak=0; updateScores();
+    // disable all keys
+    document.querySelectorAll('.key').forEach(k=>k.disabled=true);
+  }
+}
+function updateScores(){
+  document.getElementById('wins').textContent=wins;
+  document.getElementById('losses').textContent=losses;
+  document.getElementById('streak').textContent=streak;
+}
+newGame();
+</script>
+</body>
+</html>
